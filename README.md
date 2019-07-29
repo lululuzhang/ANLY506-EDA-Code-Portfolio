@@ -1,5 +1,5 @@
 # ANLY506-EDA-Code-Portfolio
-## Discription
+## Description
 This code portfolio covers R basics related to Exploratory Data Analysis. Practice files are saved on a weekly basis, in R for week 1-5 and Rmd for week 6-12.
 
 ## Topics
