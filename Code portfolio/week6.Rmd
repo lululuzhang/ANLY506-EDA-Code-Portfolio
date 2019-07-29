@@ -1,0 +1,337 @@
+---
+title: "week6"
+author: "Lu Zhang"
+date: "7/27/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Data transformation
+
+## Prerequisites: Packages
+
+```{r setup, include=FALSE}
+
+library(nycflights13)
+
+```
+
+```{r}
+flights
+
+```
+
+## Filter rows with filter()
+
+```{r}
+sep6 <- filter(flights, month == 9, day == 6)
+
+sep6
+```
+
+
+## Comparisons
+
+###  >, >=, <, <=, != (not equal), and == (equal)
+
+``` {r}
+
+near(sqrt(3) ^ 2,  3)
+
+near(sqrt(5) ^ 2,  3)
+
+```
+
+## Logical operators
+
+### Boolean operators 
+
+& is “and”, | is “or”, and ! is “not”
+
+
+```{r}
+
+filter(flights, month == 8 | month == 9)
+
+
+```
+
+
+
+```{r}
+
+aug_sep <- filter(flights, month %in% c(8,9))
+
+aug_sep
+
+```
+
+
+
+```{r}
+
+filter(flights, !(arr_delay > 120 | dep_delay > 120))
+
+```
+
+## Missing values
+
+determine if a value is missing
+
+```{r}
+
+x <- NA
+
+is.na(x)
+
+```
+
+
+```{r}
+
+df <- tibble(x = c(1, NA, 3))
+filter(df, x > 1)
+
+# preserve missing values
+
+filter(df, is.na(x) | x > 1)
+
+```
+
+## Arrange rows with arrange()
+
+```{r}
+
+arrange(flights, year, month, day)
+
+```
+
+re-order by a column in descending order using desc()
+
+```{r}
+
+arrange(flights, desc(dep_delay))
+
+
+```
+
+## Select columns with select()
+
+Select columns by name
+
+```{r}
+
+select(flights, year, month, day, dep_time)
+
+```
+
+Select all columns between year and dep_time (inclusive)
+
+```{r}
+
+select(flights, year:dep_time)
+
+
+```
+
+Select all columns except those from distance to time_hour (inclusive)
+
+```{r}
+
+select(flights, -(year:day))
+
+```
+
+## Add new variables with mutate()
+
+```{R}
+
+flights_sml <- select(flights, 
+  year:day, 
+  ends_with("delay"), 
+  distance, 
+  air_time
+)
+mutate(flights_sml,
+  gain = dep_delay - arr_delay,
+  speed = distance / air_time * 60
+)
+
+```
+
+```{R}
+
+mutate(flights_sml,
+  gain = dep_delay - arr_delay,
+  hours = air_time / 60,
+  gain_per_hour = gain / hours
+)
+
+
+```
+
+transmute(): only keep the new variables
+
+```{R}
+
+transmute(flights,
+  gain = dep_delay - arr_delay,
+  hours = air_time / 60,
+  gain_per_hour = gain / hours
+)
+
+```
+
+## Grouped summaries with summarise()
+
+```{r}
+
+by_day <- group_by(flights, year, month, day)
+
+summarise(by_day, 
+          delay = mean(dep_delay, 
+                       na.rm = TRUE))
+
+```
+
+## Combining multiple operations with the pipe
+
+explore the relationship between the distance and average delay for each carrier
+
+```{r}
+
+by_carrier <- group_by(flights, carrier)
+
+delay <- summarise(by_carrier,
+  count = n(),
+  dist = mean(distance, na.rm = TRUE),
+  delay = mean(arr_delay, na.rm = TRUE)
+)
+
+delay <- filter(delay, count > 50, carrier != "HNL")
+
+ggplot(data = delay, mapping = aes(x = dist, y = delay)) +
+  geom_point(aes(size = count), alpha = 1/3) +
+  geom_smooth(se = FALSE)
+
+```
+
+## Missing values
+
+removes the missing values prior to computation
+na.rm = TRUE 
+
+
+```{r}
+
+flights %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay, na.rm = TRUE))
+
+```
+
+missing values represent cancelled flights
+
+```{r}
+
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+not_cancelled %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay))
+
+```
+
+## Counts
+
+a count (n())
+
+or
+
+a count of non-missing values
+                            (sum(!is.na(x))
+
+
+the planes (identified by their tail number) that have the highest average delays:
+
+```{r}
+
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay)
+  )
+
+ggplot(data = delays, mapping = aes(x = delay)) + 
+  geom_freqpoly(binwidth = 10)
+
+```
+
+
+
+```{r pressure, echo=FALSE}
+
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay, na.rm = TRUE),
+    n = n()
+  )
+
+ggplot(data = delays, mapping = aes(x = n, y = delay)) + 
+  geom_point(alpha = 1/10)
+
+plot(pressure)
+```
+
+only show delay more than 30 min
+
+```{r pressure, echo=FALSE}
+
+delays %>% 
+  filter(n > 30) %>% 
+  ggplot(mapping = aes(x = n, y = delay)) + 
+    geom_point(alpha = 1/10)
+
+plot(pressure)
+```
+
+## Useful summary functions
+
+```{r}
+
+not_cancelled %>% 
+  group_by(year, month, day) %>% 
+  summarise(
+    avg_delay1 = mean(arr_delay),
+    avg_delay2 = mean(arr_delay[arr_delay > 0]) 
+  )
+
+```
+
+
+
+```{r}
+
+not_cancelled %>% 
+  group_by(carrier) %>% 
+  summarise(distance_sd = sd(distance)) %>% 
+  arrange(desc(distance_sd))
+
+```
+
+Measures of rank: 
+
+min(x), quantile(x, 0.25), max(x)
+
+the total number of miles each carrier flew
+
+```{r}
+
+not_cancelled %>% 
+  count(carrier, wt = distance)
+
+```
+

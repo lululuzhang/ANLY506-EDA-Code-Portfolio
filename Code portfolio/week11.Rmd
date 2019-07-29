@@ -1,0 +1,244 @@
+---
+title: "week11"
+author: "Lu Zhang"
+date: "7/28/2019"
+output: html_document
+---
+
+# Principal Component Analysis
+
+two functions:
+
+prcomp(x, center = TRUE, scale. = TRUE)
+princomp(x, cor = FALSE, scores = TRUE)
+
+## Compute the Principal Components
+
+```{r}
+
+mtcars.pca <- prcomp(mtcars[,c(1:7,10,11)], center = TRUE,scale. = TRUE)
+
+summary(mtcars.pca)
+
+```
+
+show PCA object
+
+```{r}
+
+str(mtcars.pca)
+
+```
+
+## Plotting PCA
+
+```{r}
+library(devtools)
+
+install_github("vqv/ggbiplot")
+
+```
+
+call ggbiplot on PCA
+
+```{r}
+
+library(ggbiplot)
+
+ggbiplot(mtcars.pca)
+```
+
+provide an argument to ggbiplot
+  labels rownames of mtcars
+
+```{r}
+
+ggbiplot(mtcars.pca, labels=rownames(mtcars))
+
+```
+
+## Interpreting the results
+
+draw an ellipse around each group
+groups argument of ggbiplot
+
+```{r}
+
+mtcars.country <- c(rep("Japan", 3), 
+                    rep("US",4), 
+                    rep("Europe", 7),
+                    rep("US",3), 
+                    "Europe", 
+                    rep("Japan", 3), 
+                    rep("US",4), 
+                    rep("Europe", 3), 
+                    "US", 
+                    rep("Europe", 3)
+                    )
+
+ggbiplot(mtcars.pca,ellipse=TRUE,  labels=rownames(mtcars), groups=mtcars.country)
+
+```
+
+choices argument
+  plot other components
+
+eg. PC3 and PC4
+
+```{r}
+
+ggbiplot(mtcars.pca,
+         ellipse=TRUE,
+         choices=c(3,4),   
+         labels=rownames(mtcars), 
+         groups=mtcars.country)
+
+```
+
+## Graphical parameters with ggbiplot
+
+circle argument
+
+```{r}
+
+ggbiplot(mtcars.pca,
+         ellipse=TRUE,
+         circle=TRUE, 
+         labels=rownames(mtcars), 
+         groups=mtcars.country)
+
+```
+
+scale the samples (obs.scale) and the variables (var.scale)
+
+```{r}
+
+ggbiplot(mtcars.pca,
+         ellipse=TRUE,
+         obs.scale = 1, 
+         var.scale = 1,  
+         labels=rownames(mtcars), 
+         groups=mtcars.country)
+
+```
+
+
+
+var.axes=FALSE
+  remove the arrows altogether
+
+
+```{r}
+
+ggbiplot(mtcars.pca,
+         ellipse=TRUE,
+         obs.scale = 1, 
+         var.scale = 1,
+         var.axes=FALSE,   
+         labels=rownames(mtcars), 
+         groups=mtcars.country)
+
+```
+
+## Customize ggbiplot
+
+scale_colour_manual()
+    Specify the colours for the groups
+ggtitle()
+    Add a title
+minimal()
+    Specify the minimal() theme
+theme()
+    Move the legend position
+```{r}
+
+ggbiplot(mtcars.pca,
+         ellipse=TRUE,
+         obs.scale = 1, 
+         var.scale = 1,  
+         labels=rownames(mtcars), 
+         groups=mtcars.country) +
+  scale_colour_manual(name="Origin", 
+                      values= c("forest green", 
+                                "red3", 
+                                "dark blue"))+
+  ggtitle("PCA of mtcars dataset")+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+
+```
+
+
+## Adding a new sample
+
+add anew sample to mtcars, creating mtcarsplus, then repeat the analysis
+
+
+```{r}
+
+spacecar <- c(1000,60,50,500,0,0.5,2.5,0,1,0,0)
+
+mtcarsplus <- rbind(mtcars, 
+                    spacecar)
+mtcars.countryplus <- c(mtcars.country, 
+                        "Jupiter")
+
+mtcarsplus.pca <- prcomp(mtcarsplus[,c(1:7,10,11)], 
+                         center = TRUE,
+                         scale. = TRUE)
+
+ggbiplot(mtcarsplus.pca, 
+         obs.scale = 1, 
+         var.scale = 1, 
+         ellipse = TRUE, 
+         circle = FALSE, 
+         var.axes=TRUE, 
+         labels=c(rownames(mtcars), "spacecar"), 
+         groups=mtcars.countryplus)+
+  scale_colour_manual(name="Origin", 
+                      values= c("forest green", 
+                                "red3", 
+                                "violet", 
+                                "dark blue"))+
+  ggtitle("PCA of mtcars dataset, 
+          with extra sample added")+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+
+```
+
+## Project a new sample onto the original PCA
+
+1. scale the values for spacecar in relation to the PCA's center (mtcars.pca$center)
+2. apply the rotation of the PCA matrix to the spacecar sample
+3. rbind() the projected values for spacecar to the rest of the pca$x matrix
+
+
+```{r}
+
+s.sc <- scale(t(spacecar[c(1:7,10,11)]), 
+              center= mtcars.pca$center)
+s.pred <- s.sc %*% mtcars.pca$rotation
+
+
+mtcars.plusproj.pca <- mtcars.pca
+mtcars.plusproj.pca$x <- rbind(mtcars.plusproj.pca$x, s.pred)
+
+
+ggbiplot(mtcars.plusproj.pca, obs.scale = 1, 
+         var.scale = 1, 
+         ellipse = TRUE, 
+         circle = FALSE, 
+         var.axes=TRUE, 
+         labels=c(rownames(mtcars), 
+                  "spacecar"), 
+         groups=mtcars.countryplus)+
+  scale_colour_manual(name="Origin", 
+                      values= c("forest green", "red3", "violet", "dark blue"))+
+  ggtitle("PCA of mtcars dataset, 
+          with extra sample projected")+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+
+```
+
